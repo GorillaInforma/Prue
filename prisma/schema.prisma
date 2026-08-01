@@ -1,0 +1,74 @@
+// Base de datos: PostgreSQL (usa Vercel Postgres, Neon o Supabase)
+// Corre `npx prisma migrate dev` localmente para crear las tablas.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Cliente {
+  id            String     @id @default(cuid())
+  nombre        String
+  rfc           String?
+  email         String
+  telefono      String?
+  createdAt     DateTime   @default(now())
+  facturas      Factura[]
+}
+
+model Factura {
+  id            String     @id @default(cuid())
+  cliente       Cliente    @relation(fields: [clienteId], references: [id])
+  clienteId     String
+  monto         Float
+  concepto      String
+  estatus       EstatusFactura @default(PENDIENTE)
+  fechaEmision  DateTime   @default(now())
+  fechaVencimiento DateTime
+  uuidCfdi      String?    // aquí iría el folio fiscal que devuelve el PAC real
+  pagos         Pago[]
+  recordatorios Recordatorio[]
+}
+
+model Pago {
+  id            String     @id @default(cuid())
+  factura       Factura    @relation(fields: [facturaId], references: [id])
+  facturaId     String
+  monto         Float
+  metodo        MetodoPago
+  referencia    String?    // id de transacción del procesador de pagos real
+  conciliado    Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+}
+
+model Recordatorio {
+  id            String     @id @default(cuid())
+  factura       Factura    @relation(fields: [facturaId], references: [id])
+  facturaId     String
+  canal         CanalRecordatorio
+  enviadoAt     DateTime   @default(now())
+  estatus       String     @default("enviado")
+}
+
+enum EstatusFactura {
+  PENDIENTE
+  PAGADA
+  VENCIDA
+  CANCELADA
+}
+
+enum MetodoPago {
+  TARJETA
+  SPEI
+  EFECTIVO
+}
+
+enum CanalRecordatorio {
+  WHATSAPP
+  EMAIL
+  SMS
+}
